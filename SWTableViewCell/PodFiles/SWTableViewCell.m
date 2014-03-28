@@ -10,6 +10,7 @@
 #import <UIKit/UIGestureRecognizerSubclass.h>
 #import "SWUtilityButtonView.h"
 
+#define fequalf(a,b) (fabsf((a) - (b)) < FLT_EPSILON)
 #define LONG_PRESS_MINIMUM_DURATION 0.16f
 
 static NSString * const kTableViewCellContentView = @"UITableViewCellContentView";
@@ -329,7 +330,7 @@ static NSString * const kTableViewCellContentView = @"UITableViewCellContentView
 
 #pragma mark - Highlighting methods
 
-- (void)updateHighlight:(BOOL)highlight animated:(BOOL)animated;
+- (void)updateHighlight:(BOOL)highlight animated:(BOOL)animated
 {
     [self setHighlighted:highlight animated:animated];
 }
@@ -636,11 +637,11 @@ static NSString * const kTableViewCellContentView = @"UITableViewCellContentView
 
 - (void)setCellState
 {
-    if ([self.cellScrollView contentOffset].x == [self leftUtilityButtonsWidth])
+    if (fequalf([self.cellScrollView contentOffset].x, [self leftUtilityButtonsWidth]))
         _cellState = kCellStateCenter;
-    else if ([self.cellScrollView contentOffset].x == 0)
+    else if (fequalf([self.cellScrollView contentOffset].x, 0))
         _cellState = kCellStateLeft;
-    else if ([self.cellScrollView contentOffset].x == [self utilityButtonsPadding])
+    else if (fequalf([self.cellScrollView contentOffset].x, [self utilityButtonsPadding]))
         _cellState = kCellStateRight;
 }
 

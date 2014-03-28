@@ -80,6 +80,8 @@
 
 - (void)setHeight:(CGFloat)height
 {
+    _height = height;
+    
     for (NSUInteger utilityButtonsCounter = 0; utilityButtonsCounter < _utilityButtons.count; utilityButtonsCounter++)
     {
         UIButton *utilityButton = (UIButton *)_utilityButtons[utilityButtonsCounter];
