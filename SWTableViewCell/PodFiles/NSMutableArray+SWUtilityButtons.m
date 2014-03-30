@@ -19,11 +19,30 @@
     [self addObject:button];
 }
 
+- (void)sw_addUtilityButtonWithColor:(UIColor *)color title:(NSString *)title accessibilityIdentifier:(NSString *)accessibilityIdentifier
+{
+    UIButton *button = [UIButton buttonWithType:UIButtonTypeCustom];
+    button.backgroundColor = color;
+    [button setTitle:title forState:UIControlStateNormal];
+    [button setTitleColor:[UIColor whiteColor] forState:UIControlStateNormal];
+    [button setAccessibilityIdentifier:accessibilityIdentifier];
+    [self addObject:button];
+}
+
 - (void)sw_addUtilityButtonWithColor:(UIColor *)color icon:(UIImage *)icon
 {
     UIButton *button = [UIButton buttonWithType:UIButtonTypeCustom];
     button.backgroundColor = color;
     [button setImage:icon forState:UIControlStateNormal];
+    [self addObject:button];
+}
+
+- (void)sw_addUtilityButtonWithColor:(UIColor *)color icon:(UIImage *)icon accessibilityIdentifier:(NSString *)accessibilityIdentifier
+{
+    UIButton *button = [UIButton buttonWithType:UIButtonTypeCustom];
+    button.backgroundColor = color;
+    [button setImage:icon forState:UIControlStateNormal];
+    [button setAccessibilityIdentifier:accessibilityIdentifier];
     [self addObject:button];
 }
 
