@@ -5,13 +5,13 @@
 //  Created by Chris Wendel on 9/10/13.
 //  Copyright (c) 2013 Chris Wendel. All rights reserved.
 //
-
 #import "SWTableViewCell.h"
+
 #import <UIKit/UIGestureRecognizerSubclass.h>
+
 #import "SWUtilityButtonView.h"
 
 #define fequalf(a,b) (fabsf((a) - (b)) < FLT_EPSILON)
-#define LONG_PRESS_MINIMUM_DURATION 0.16f
 
 static NSString * const kTableViewCellContentView = @"UITableViewCellContentView";
 
@@ -33,8 +33,6 @@ static NSString * const kTableViewCellContentView = @"UITableViewCellContentView
 @property (nonatomic, strong) SWLongPressGestureRecognizer *longPressGestureRecognizer;
 @property (nonatomic, strong) UITapGestureRecognizer *tapGestureRecognizer;
 
-@property (nonatomic, assign, getter = isShowingSelection) BOOL showingSelection; // YES if we are currently highlighting the cell for selection
-
 @end
 
 @implementation SWTableViewCell
@@ -47,8 +45,9 @@ static NSString * const kTableViewCellContentView = @"UITableViewCellContentView
     if (self)
     {
         self.height = containingTableView.rowHeight;
-        [self initializer];
         self.containingTableView = containingTableView;
+        self.highlighted = NO;
+        [self initializer];
         self.rightUtilityButtons = rightUtilityButtons;
         self.leftUtilityButtons = leftUtilityButtons;
     }
@@ -94,6 +93,13 @@ static NSString * const kTableViewCellContentView = @"UITableViewCellContentView
 
 - (void)initializer
 {
+    // Check if the UITableView will display Indices on the right. If that's the case, add a padding
+    if([self.containingTableView.dataSource respondsToSelector:@selector(sectionIndexTitlesForTableView:)])
+    {
+        NSArray *indices = [self.containingTableView.dataSource sectionIndexTitlesForTableView:self.containingTableView];
+        additionalRightPadding = indices == nil ? 0 : kSectionIndexWidth;
+    }
+    
     // Set up scroll view that will host our cell content
     SWCellScrollView *cellScrollView = [[SWCellScrollView alloc] initWithFrame:CGRectMake(0, 0, CGRectGetWidth(self.bounds), self.height)];
     cellScrollView.delegate = self;
@@ -111,8 +117,7 @@ static NSString * const kTableViewCellContentView = @"UITableViewCellContentView
     SWLongPressGestureRecognizer *longPressGestureRecognizer = [[SWLongPressGestureRecognizer alloc] initWithTarget:self
                                                                                                              action:@selector(scrollViewPressed:)];
     longPressGestureRecognizer.cancelsTouchesInView = NO;
-    longPressGestureRecognizer.minimumPressDuration = LONG_PRESS_MINIMUM_DURATION;
-    longPressGestureRecognizer.delegate = self;
+    longPressGestureRecognizer.minimumPressDuration = 0.1;
     [cellScrollView addGestureRecognizer:longPressGestureRecognizer];
     
     self.longPressGestureRecognizer = longPressGestureRecognizer;
@@ -139,28 +144,12 @@ static NSString * const kTableViewCellContentView = @"UITableViewCellContentView
         [self.scrollViewContentView addSubview:subview];
     }
     
-    self.showingSelection = NO;
-    self.highlighted = NO;
-}
-
-- (void)setContainingTableView:(UITableView *)containingTableView
-{
-    _containingTableView = containingTableView;
-    // Check if the UITableView will display Indices on the right. If that's the case, add a padding
-    if([_containingTableView.dataSource respondsToSelector:@selector(sectionIndexTitlesForTableView:)])
-    {
-        NSArray *indices = [_containingTableView.dataSource sectionIndexTitlesForTableView:_containingTableView];
-        additionalRightPadding = indices == nil ? 0 : kSectionIndexWidth;
-    }
-    
-    _containingTableView.directionalLockEnabled = YES;
-    
-    self.height = _containingTableView.rowHeight;
-    [self.tapGestureRecognizer requireGestureRecognizerToFail:_containingTableView.panGestureRecognizer];
+    self.containingTableView.directionalLockEnabled = YES;
 }
 
 - (void)layoutSubviews
 {
+
     [super layoutSubviews];
     
     self.cellScrollView.frame = CGRectMake(0, 0, CGRectGetWidth(self.bounds), self.height);
@@ -171,9 +160,9 @@ static NSString * const kTableViewCellContentView = @"UITableViewCellContentView
     self.scrollViewButtonViewRight.frame = CGRectMake(CGRectGetWidth(self.bounds), 0, 0, self.height);
     self.scrollViewButtonViewRight.layer.masksToBounds = YES;
     self.scrollViewContentView.frame = CGRectMake([self leftUtilityButtonsWidth], 0, CGRectGetWidth(self.bounds), self.height);
+    self.cellScrollView.scrollEnabled = YES;
     self.tapGestureRecognizer.enabled = YES;
-    self.showingSelection = NO;
-    self.cellScrollView.scrollEnabled = !self.selected;
+    
 }
 
 #pragma mark - Properties
@@ -247,23 +236,7 @@ static NSString * const kTableViewCellContentView = @"UITableViewCellContentView
 
 - (void)scrollViewUp:(id)sender
 {
-    if(_cellState == kCellStateCenter)
-    {
-        // Selection
-        if ([self.containingTableView.delegate respondsToSelector:@selector(tableView:didSelectRowAtIndexPath:)])
-        {
-            NSIndexPath *cellIndexPath = [self.containingTableView indexPathForCell:self];
-            self.showingSelection = YES;
-            [self setSelected:YES];
-            [self.containingTableView selectRowAtIndexPath:cellIndexPath animated:NO scrollPosition:UITableViewScrollPositionNone];
-            [self.containingTableView.delegate tableView:self.containingTableView didSelectRowAtIndexPath:cellIndexPath];
-        }
-    }
-    else
-    {
-        // Scroll back to center
-        [self hideUtilityButtonsAnimated:YES];
-    }
+    [self selectCellWithTimedHighlight];
 }
 
 - (void)selectCell
@@ -280,6 +253,34 @@ static NSString * const kTableViewCellContentView = @"UITableViewCellContentView
     }
 }
 
+- (void)selectCellWithTimedHighlight
+{
+    if(_cellState == kCellStateCenter)
+    {
+        // Selection
+        if ([self.containingTableView.delegate respondsToSelector:@selector(tableView:didSelectRowAtIndexPath:)])
+        {
+            NSIndexPath *cellIndexPath = [self.containingTableView indexPathForCell:self];
+            [self setSelected:YES];
+            [self.containingTableView selectRowAtIndexPath:cellIndexPath animated:NO scrollPosition:UITableViewScrollPositionNone];
+            [self.containingTableView.delegate tableView:self.containingTableView didSelectRowAtIndexPath:cellIndexPath];
+            [self.containingTableView deselectRowAtIndexPath:cellIndexPath animated:NO];
+            // Make the selection visible
+            NSTimer *endHighlightTimer = [NSTimer scheduledTimerWithTimeInterval:0.20
+                                                                          target:self
+                                                                        selector:@selector(timerEndCellHighlight:)
+                                                                        userInfo:nil
+                                                                         repeats:NO];
+            [[NSRunLoop currentRunLoop] addTimer:endHighlightTimer forMode:NSRunLoopCommonModes];
+        }
+    }
+    else
+    {
+        // Scroll back to center
+        [self hideUtilityButtonsAnimated:YES];
+    }
+}
+
 - (void)highlightCell
 {
     if (_cellState == kCellStateCenter)
@@ -290,7 +291,6 @@ static NSString * const kTableViewCellContentView = @"UITableViewCellContentView
 
 - (void)timerEndCellHighlight:(id)sender
 {
-    self.showingSelection = NO;
     [self setSelected:NO];
 }
 
@@ -318,24 +318,15 @@ static NSString * const kTableViewCellContentView = @"UITableViewCellContentView
 
 - (void)setSelected:(BOOL)selected
 {
-    [super setSelected:selected];
-    [self updateHighlight:selected animated:NO];
+    [self setHighlighted:selected];
 }
 
 - (void)setSelected:(BOOL)selected animated:(BOOL)animated
 {
-    [super setSelected:selected animated:animated];
-    [self updateHighlight:selected animated:animated];
+    [self setHighlighted:selected];
 }
 
-#pragma mark - Highlighting methods
-
-- (void)updateHighlight:(BOOL)highlight animated:(BOOL)animated
-{
-    [self setHighlighted:highlight animated:animated];
-}
-
-#pragma mark -  Height methods
+#pragma mark - Height methods
 
 - (void)setCellHeight:(CGFloat)height
 {
@@ -633,8 +624,6 @@ static NSString * const kTableViewCellContentView = @"UITableViewCellContentView
     }
 }
 
-#pragma mark - Cell State
-
 - (void)setCellState
 {
     if (fequalf([self.cellScrollView contentOffset].x, [self leftUtilityButtonsWidth]))
@@ -643,13 +632,6 @@ static NSString * const kTableViewCellContentView = @"UITableViewCellContentView
         _cellState = kCellStateLeft;
     else if (fequalf([self.cellScrollView contentOffset].x, [self utilityButtonsPadding]))
         _cellState = kCellStateRight;
-}
-
-#pragma mark - UIGestureRecognizerDelegate
-
-- (BOOL)gestureRecognizer:(UIGestureRecognizer *)gestureRecognizer shouldRecognizeSimultaneouslyWithGestureRecognizer:(UIGestureRecognizer *)otherGestureRecognizer {
-    // Return YES so the pan gesture of the containing table view is not cancelled by the long press recognizer
-    return YES;
 }
 
 @end

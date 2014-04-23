@@ -33,7 +33,7 @@ typedef enum {
 
 @end
 
-@interface SWTableViewCell : UITableViewCell <UIGestureRecognizerDelegate>
+@interface SWTableViewCell : UITableViewCell
 
 @property (nonatomic, strong) NSArray *leftUtilityButtons;
 @property (nonatomic, strong) NSArray *rightUtilityButtons;

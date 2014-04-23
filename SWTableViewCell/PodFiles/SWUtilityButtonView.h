@@ -15,7 +15,6 @@
 @property (nonatomic) CGFloat utilityButtonWidth;
 @property (nonatomic, weak) SWTableViewCell *parentCell;
 @property (nonatomic) SEL utilityButtonSelector;
-@property (nonatomic) CGFloat height;
 
 - (id)initWithUtilityButtons:(NSArray *)utilityButtons parentCell:(SWTableViewCell *)parentCell utilityButtonSelector:(SEL)utilityButtonSelector;
 
@@ -23,5 +22,6 @@
 
 - (void)populateUtilityButtons;
 - (CGFloat)utilityButtonsWidth;
+- (void)setHeight:(CGFloat)height;
 
 @end
